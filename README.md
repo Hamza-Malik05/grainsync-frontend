@@ -39,18 +39,7 @@ spring.jpa.show-sql=true
 server.port=8080
 3. Run Locally:
  mvn spring-boot:run
-4. Deployed Backend URL:
- https://grainsync.up.railway.app
-📡 API Endpoints (Examples)
-User - POST /api/users/register - Register a new user
-Employee - GET /api/employees/unregistered - Fetch unregistered employees
-Finance - GET /api/bills - Get all bills
-Sales - POST /api/sales - Add a new sale
-🔒 Authentication
-JWT-based authentication can be added for user login and secure API access.
-📤 Deployment
-Backend is deployed on Railway.app.
-Frontend connects via https://grainsync.up.railway.app
+
 🧑‍💻 Developer Notes
 • Ensure both frontend and backend run simultaneously for local testing.
 • CORS configured to allow frontend requests.
