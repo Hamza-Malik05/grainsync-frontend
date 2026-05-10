@@ -1,3 +1,4 @@
+// javascript
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
@@ -16,11 +17,9 @@ export default function ViewEmployees() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch departments for filtering
                 const departmentsResponse = await axios.get(`${BASE_URL}/api/departments`);
                 setDepartments(departmentsResponse.data);
 
-                // Fetch all employees
                 const employeesResponse = await axios.get(`${BASE_URL}/api/employees`);
                 setEmployees(employeesResponse.data);
             } catch (error) {
@@ -42,16 +41,43 @@ export default function ViewEmployees() {
         });
     };
 
+    // Helper to normalize department id from different payload shapes
+    const getDeptId = (employee) => {
+        if (!employee) return null;
+        if (employee.department && typeof employee.department === "object") {
+            return Number(employee.department.dept_id) || null;
+        }
+        if (typeof employee.department === "number") {
+            return employee.department;
+        }
+        if (employee.dept_id != null) {
+            return Number(employee.dept_id);
+        }
+        return null;
+    };
+
+    // Helper to resolve department name using employee payload or departments list
+    const getDeptName = (employee) => {
+        if (!employee) return "N/A";
+        if (employee.department && typeof employee.department === "object") {
+            return employee.department.name || "N/A";
+        }
+        const id = getDeptId(employee);
+        if (id == null) return "N/A";
+        const found = departments.find((d) => Number(d.dept_id) === Number(id));
+        return found ? found.name : "N/A";
+    };
+
     const filteredEmployees = employees.filter((employee) => {
         const matchesDepartment = filters.departmentId === "" ||
-            employee.department?.dept_id === Number(filters.departmentId);
+            getDeptId(employee) === Number(filters.departmentId);
 
         const searchTerm = filters.searchTerm.toLowerCase();
         const matchesSearch =
-            employee.first_name?.toLowerCase().includes(searchTerm) ||
-            employee.last_name?.toLowerCase().includes(searchTerm) ||
-            employee.email?.toLowerCase().includes(searchTerm) ||
-            employee.designation?.toLowerCase().includes(searchTerm);
+            (employee.first_name || "").toLowerCase().includes(searchTerm) ||
+            (employee.last_name || "").toLowerCase().includes(searchTerm) ||
+            (employee.email || "").toLowerCase().includes(searchTerm) ||
+            (employee.designation || "").toLowerCase().includes(searchTerm);
 
         return matchesDepartment && matchesSearch;
     });
@@ -163,7 +189,7 @@ export default function ViewEmployees() {
                                     {employee.cnic || "N/A"}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {employee.department?.name || "N/A"}
+                                    {getDeptName(employee)}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {employee.designation || "N/A"}

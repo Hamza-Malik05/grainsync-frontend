@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import {Link} from "react-router-dom";
-const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+const BASE_URL = `${import.meta.env.VITE_BACKEND_URL}/api`;
 export default function Orders() {
     const [customers, setCustomers] = useState([]);
     const [employees, setEmployees] = useState([]);

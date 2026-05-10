@@ -1,7 +1,8 @@
+// File: src/components/WarehouseManager/WMDashboard.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 const Dashboard = () => {
     const navigate = useNavigate();
     const userRole = localStorage.getItem('role');
@@ -25,6 +26,12 @@ const Dashboard = () => {
             path: '/suppliers',
             description: 'View and manage suppliers in the system',
             icon: '🛒'
+        },
+        {
+            title: 'View Purchases',
+            path: '/warehouse/purchases',
+            description: 'Review purchase orders and supplier deliveries',
+            icon: '🧾'
         }
     ];
 
@@ -117,3 +124,5 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+

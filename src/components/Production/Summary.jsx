@@ -1,3 +1,4 @@
+// src/components/Production/Summary.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
@@ -29,6 +30,14 @@ export default function BatchSummary() {
   };
 
   const stats = selectedBatch ? calculateStats(selectedBatch) : null;
+
+  const formatEmployee = (emp) => {
+    if (!emp) return "N/A";
+    const hasName = emp.first_name || emp.last_name;
+    if (hasName) return `${emp.first_name || ""} ${emp.last_name || ""}`.trim();
+    if (emp.employee_id !== undefined && emp.employee_id !== null) return `ID: ${emp.employee_id}`;
+    return "N/A";
+  };
 
   return (
       <div className="min-h-screen bg-gradient-to-br from-[#aec3c1] to-[#546464] p-8">
@@ -76,9 +85,7 @@ export default function BatchSummary() {
                     <td className="py-2 px-4 border">{batch.start_time}</td>
                     <td className="py-2 px-4 border">{batch.end_time}</td>
                     <td className="py-2 px-4 border">
-                      {batch.employee
-                          ? `${batch.employee.first_name} ${batch.employee.last_name}`
-                          : "N/A"}
+                      {formatEmployee(batch.employee)}
                     </td>
                   </tr>
               ))}
@@ -99,6 +106,7 @@ export default function BatchSummary() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <p><strong>Batch ID:</strong> {selectedBatch.batch_id}</p>
                   <p><strong>Product:</strong> {selectedBatch.product?.name || "N/A"}</p>
+                  <p><strong>Employee:</strong> {formatEmployee(selectedBatch.employee)}</p>
                   <p><strong>Yield (%):</strong> {stats.yieldPercent}%</p>
                   <p><strong>Wastage (Units):</strong> {stats.wastage}</p>
                 </div>

@@ -37,6 +37,7 @@ import WMDashboard from './components/WarehouseManager/WMDashboard';
 import RawMaterialManager from './components/WarehouseManager/RawMaterialManager';
 import SuppliersList from './components/WarehouseManager/SuppliersList';
 import ProductInventory from './components/WarehouseManager/ProductInventory';
+import Purchases from './components/WarehouseManager/Purchases';
 
 // Sales and Distribution
 import SDDashboard from './components/SalesandDistribution/SDDashboard';
@@ -82,6 +83,8 @@ function App() {
           <Route path="/warehouse/raw-material" element={<RawMaterialManager />} />
           <Route path="/suppliers" element={<SuppliersList />} />
           <Route path="/warehouse/storage" element={<ProductInventory />} />
+          <Route path="/warehouse/purchases" element={<Purchases />} />
+
 
           {/* Sales and Distribution */}
           <Route path="/sales-dashboard" element={<SDDashboard />} />

@@ -22,7 +22,7 @@ const AddBill = () => {
     useEffect(() => {
         const fetchAccountants = async () => {
             try {
-                const response = await axios.get(`${BASE_URL}/api/accountants`);
+                const response = await axios.get(`${BASE_URL}/api/accountant`);
                 setAccountants(response.data);
             } catch (error) {
                 console.error("Error fetching accountants:", error);
@@ -181,8 +181,9 @@ const AddBill = () => {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         >
                             <option value="">Select Payment Method</option>
-                            <option value="Online">Online</option>
-                            <option value="Cash">Cash</option>
+                            <option value="bank transfer">Bank Transfer</option>
+                            <option value="mobile payment">Mobile Payment</option>
+                            <option value="cash">Cash</option>
                         </select>
                     </div>
 

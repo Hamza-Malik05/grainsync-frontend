@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import moment from 'moment';
 import { motion } from 'framer-motion';
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
+
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 const ManageDeliveries = () => {
     const [deliveries, setDeliveries] = useState([]);
     const [pendingDeliveries, setPendingDeliveries] = useState([]);
@@ -54,14 +56,28 @@ const ManageDeliveries = () => {
         }
     };
 
+    // Helper function to look up the driver's name from the drivers array
+    const getDriverName = (driverId) => {
+        const foundDriver = drivers.find(d => d.driver_id === driverId);
+        if (foundDriver && foundDriver.employee) {
+            return `${driverId} - ${foundDriver.employee.first_name} ${foundDriver.employee.last_name}`;
+        }
+        return `Driver ID: ${driverId}`; // Fallback if driver hasn't loaded yet
+    };
+
     const handleAssignDelivery = (delivery) => {
         setSelectedDelivery(delivery);
         setIsModalVisible(true);
     };
 
-    const handleCompleteDelivery = async (deliveryId) => {
+    const handleCompleteDelivery = async (delivery) => {
+        if (!delivery.driver || !delivery.vehicle) {
+            alert('Cannot complete: Please assign a driver and a vehicle first.');
+            return;
+        }
+
         try {
-            await axios.post(`${BASE_URL}/api/deliveries/${deliveryId}/complete`);
+            await axios.post(`${BASE_URL}/api/deliveries/${delivery.delivery_id}/complete`);
             alert('Delivery marked as completed');
             fetchDeliveries();
         } catch (error) {
@@ -90,7 +106,7 @@ const ManageDeliveries = () => {
             const formData = new FormData(e.target);
             const updatedDelivery = {
                 ...selectedDelivery,
-                driver: { driverId: parseInt(formData.get('driver_id')) },
+                driver: { driver_id: parseInt(formData.get('driver_id')) },
                 vehicle: { vehicle_id: parseInt(formData.get('vehicle_id')) },
                 departureTime: formData.get('departure_time')
             };
@@ -104,89 +120,107 @@ const ManageDeliveries = () => {
         }
     };
 
-    const renderDeliveryTable = (deliveryList) => (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden"
+    const renderDeliveryTable = (deliveryList) => {
+        // Sort the deliveries by order_id
+        const sortedDeliveries = [...deliveryList].sort((a, b) => {
+            const orderIdA = a.order?.order_id || 0;
+            const orderIdB = b.order?.order_id || 0;
+            return orderIdA - orderIdB;
+        });
 
-        >
-            <table className="min-w-full">
-                <thead>
-                <tr className="bg-[#aec3c1] text-white">
-                    <th className="py-4 px-6 text-left">Order ID</th>
-                    <th className="py-4 px-6 text-left">Driver</th>
-                    <th className="py-4 px-6 text-left">Vehicle</th>
-                    <th className="py-4 px-6 text-left">Departure Time</th>
-                    <th className="py-4 px-6 text-left">Delivery Time</th>
-                    <th className="py-4 px-6 text-left">Actions</th>
-                </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                {deliveryList.map(delivery => (
-                    <tr key={delivery.delivery_id} className="hover:bg-gray-50">
-                        <td className="py-4 px-6">{delivery.order?.order_id}</td>
-                        <td className="py-4 px-6">{delivery.driver ? `${delivery.driver.employee.first_name} ${delivery.driver.employee.last_name}` : 'Not assigned'}</td>
-                        <td className="py-4 px-6">{delivery.vehicle ? `${delivery.vehicle.model} (${delivery.vehicle.license_plate})` : 'Not assigned'}</td>
-                        <td className="py-4 px-6">{delivery.departureTime ? moment(delivery.departureTime).format('YYYY-MM-DD HH:mm') : 'Not set'}</td>
-                        <td className="py-4 px-6">{delivery.deliveryTime ? moment(delivery.deliveryTime).format('YYYY-MM-DD HH:mm') : 'Not delivered'}</td>
-                        <td className="py-4 px-6">
-                            {!delivery.deliveryTime ? (
-                                <div className="flex space-x-2">
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="bg-[#aec3c1] text-white px-4 py-2 rounded-lg hover:bg-[#546464] transition-colors"
-                                        onClick={() => handleAssignDelivery(delivery)}
-                                    >
-                                        Assign
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
-                                        onClick={() => handleCompleteDelivery(delivery.delivery_id)}
-                                    >
-                                        Complete
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-                                        onClick={() => handleCancelDelivery(delivery.delivery_id)}
-                                    >
-                                        Cancel
-                                    </motion.button>
-                                </div>
-                            ) : (
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                                    onClick={() => handleViewDetails(delivery)}
-                                >
-                                    View Details
-                                </motion.button>
-                            )}
-                        </td>
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white rounded-2xl shadow-xl overflow-hidden"
+            >
+                <table className="min-w-full">
+                    <thead>
+                    <tr className="bg-[#aec3c1] text-white">
+                        <th className="py-4 px-6 text-left">Order ID</th>
+                        <th className="py-4 px-6 text-left">Driver</th>
+                        <th className="py-4 px-6 text-left">Vehicle</th>
+                        <th className="py-4 px-6 text-left">Departure Time</th>
+                        <th className="py-4 px-6 text-left">Delivery Time</th>
+                        <th className="py-4 px-6 text-left">Actions</th>
                     </tr>
-                ))}
-                </tbody>
-            </table>
-        </motion.div>
-    );
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                    {/* Map over sortedDeliveries instead of deliveryList */}
+                    {sortedDeliveries.map(delivery => (
+                        <tr key={delivery.delivery_id} className="hover:bg-gray-50">
+                            <td className="py-4 px-6">{delivery.order?.order_id}</td>
+                            <td className="py-4 px-6">
+                                {delivery.driver?.driver_id
+                                    ? getDriverName(delivery.driver.driver_id)
+                                    : 'Not assigned'}
+                            </td>
+                            <td className="py-4 px-6">{delivery.vehicle ? `${delivery.vehicle.model} (${delivery.vehicle.license_plate})` : 'Not assigned'}</td>
+                            <td className="py-4 px-6">{delivery.departureTime ? moment(delivery.departureTime).format('YYYY-MM-DD HH:mm') : 'Not set'}</td>
+                            <td className="py-4 px-6">{delivery.deliveryTime ? moment(delivery.deliveryTime).format('YYYY-MM-DD HH:mm') : 'Not delivered'}</td>
+                            <td className="py-4 px-6">
+                                {!delivery.deliveryTime ? (
+                                    <div className="flex space-x-2">
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className="bg-[#aec3c1] text-white px-4 py-2 rounded-lg hover:bg-[#546464] transition-colors"
+                                            onClick={() => handleAssignDelivery(delivery)}
+                                        >
+                                            Assign
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className={`px-4 py-2 rounded-lg transition-colors text-white ${
+                                                !delivery.driver || !delivery.vehicle
+                                                    ? 'bg-green-300 cursor-not-allowed'
+                                                    : 'bg-green-500 hover:bg-green-600'
+                                            }`}
+                                            onClick={() => handleCompleteDelivery(delivery)}
+                                        >
+                                            Complete
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                                            onClick={() => handleCancelDelivery(delivery.delivery_id)}
+                                        >
+                                            Cancel
+                                        </motion.button>
+                                    </div>
+                                ) : (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                                        onClick={() => handleViewDetails(delivery)}
+                                    >
+                                        View Details
+                                    </motion.button>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </motion.div>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#aec3c1] to-[#546464] p-8">
-            <div className="max-w-7xl mx-auto"><div className="flex justify-start mb-0">
-                <Link
-                    to="/sales-dashboard"
-                    className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-                >
-                    ← Back to Sales Dashboard
-                </Link>
-            </div>
+            <div className="max-w-7xl mx-auto">
+                <div className="flex justify-start mb-0">
+                    <Link
+                        to="/sales-dashboard"
+                        className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+                    >
+                        ← Back to Sales Dashboard
+                    </Link>
+                </div>
                 <h1 className="text-4xl font-bold text-white text-center mb-8">Manage Deliveries</h1>
 
                 <div className="flex justify-center space-x-4 mb-8">
@@ -250,8 +284,10 @@ const ManageDeliveries = () => {
                                     >
                                         <option value="">Select a driver...</option>
                                         {drivers.map(driver => (
-                                            <option key={driver.driverId} value={driver.driverId}>
-                                                {`${driver.employee.first_name} ${driver.employee.last_name}`}
+                                            <option key={driver.driver_id} value={driver.driver_id}>
+                                                {driver.employee
+                                                    ? `${driver.driver_id} - ${driver.employee.first_name} ${driver.employee.last_name}`
+                                                    : `Driver ID: ${driver.driver_id}`}
                                             </option>
                                         ))}
                                     </select>
@@ -320,8 +356,8 @@ const ManageDeliveries = () => {
                                 <div>
                                     <label className="block text-gray-700 font-semibold">Driver</label>
                                     <p className="text-gray-600">
-                                        {selectedDelivery.driver
-                                            ? `${selectedDelivery.driver.employee.first_name} ${selectedDelivery.driver.employee.last_name}`
+                                        {selectedDelivery.driver?.driver_id
+                                            ? getDriverName(selectedDelivery.driver.driver_id)
                                             : 'Not assigned'}
                                     </p>
                                 </div>

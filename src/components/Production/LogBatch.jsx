@@ -1,8 +1,11 @@
+// javascript
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
+
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
+
 export default function LogBatch() {
   const [products, setProducts] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -82,7 +85,8 @@ export default function LogBatch() {
       );
       setFilteredProductStorageUnits(matchingUnits);
       if (matchingUnits.length > 0) {
-        updatedForm.p_storage_unit_id = matchingUnits[0].id; // Pick first matching unit or apply custom logic
+        // Use the correct p_storage_unit_id from payload
+        updatedForm.p_storage_unit_id = matchingUnits[0].p_storage_unit_id ?? matchingUnits[0].id;
       } else {
         updatedForm.p_storage_unit_id = "";
       }
@@ -99,11 +103,21 @@ export default function LogBatch() {
       return;
     }
 
+    const used = parseFloat(formData.quantity_used);
+    const produced = parseFloat(formData.quantity_produced);
+
+    // Ensure produced quantity does not exceed used raw material
+    if (!isNaN(used) && !isNaN(produced) && produced > used) {
+      alert("Quantity produced cannot exceed quantity used.");
+      return;
+    }
+
+    // Match against r_storage_unit_id
     const selectedStorage = storageUnits.find(
-        (unit) => unit.id === parseInt(formData.r_storage_unit_id)
+        (unit) => (unit.r_storage_unit_id ?? unit.id) === parseInt(formData.r_storage_unit_id)
     );
 
-    if (selectedStorage && parseFloat(formData.quantity_used) > selectedStorage.quantity_stored) {
+    if (selectedStorage && used > selectedStorage.quantity_stored) {
       alert("Not enough stock in the selected storage unit.");
       return;
     }
@@ -143,6 +157,13 @@ export default function LogBatch() {
     }
   };
 
+  // Sort raw material storage units by ID in ascending order
+  const sortedStorageUnits = [...storageUnits].sort((a, b) => {
+    const idA = a.r_storage_unit_id ?? a.id ?? 0;
+    const idB = b.r_storage_unit_id ?? b.id ?? 0;
+    return idA - idB;
+  });
+
   return (
       <div className="min-h-screen bg-gradient-to-br from-[#aec3c1] to-[#546464] p-8">
         <motion.div
@@ -150,14 +171,15 @@ export default function LogBatch() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8"
-        ><div className="flex justify-start mb-4">
-          <Link
-              to="/production-dashboard"
-              className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-          >
-            ← Back to Production Dashboard
-          </Link>
-        </div>
+        >
+          <div className="flex justify-start mb-4">
+            <Link
+                to="/production-dashboard"
+                className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
+            >
+              ← Back to Production Dashboard
+            </Link>
+          </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Log Production Batch</h2>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -258,12 +280,16 @@ export default function LogBatch() {
                     className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="">Select Storage Unit</option>
-                  {storageUnits.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        Unit #{unit.id} — {unit.quantity_stored}/{unit.capacity}
-                        {unit.quantity_stored < 10 ? " ⚠️ Low stock" : ""}
-                      </option>
-                  ))}
+                  {sortedStorageUnits.map((unit) => {
+                    // Extract exact ID for raw materials
+                    const rawId = unit.r_storage_unit_id ?? unit.id;
+                    return (
+                        <option key={rawId} value={rawId}>
+                          Unit #{rawId} — {unit.quantity_stored}/{unit.capacity}
+                          {unit.quantity_stored < 10 ? " ⚠️ Low stock" : ""}
+                        </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -271,11 +297,15 @@ export default function LogBatch() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Product Storage Unit</label>
                 {filteredProductStorageUnits.length > 0 ? (
                     <div className="p-4 border rounded-lg bg-gray-100 text-sm text-gray-700">
-                      {filteredProductStorageUnits.map((unit) => (
-                          <div key={unit.id}>
-                            Unit #{unit.id} — {unit.quantity_stored}/{unit.capacity}
-                          </div>
-                      ))}
+                      {filteredProductStorageUnits.map((unit) => {
+                        // Extract exact ID for product storage units
+                        const prodId = unit.p_storage_unit_id ?? unit.id;
+                        return (
+                            <div key={prodId}>
+                              Unit #{prodId} — {unit.quantity_stored}/{unit.capacity}
+                            </div>
+                        );
+                      })}
                     </div>
                 ) : (
                     <div className="p-4 border rounded-lg bg-gray-100 text-sm text-gray-500">

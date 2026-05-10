@@ -1,7 +1,8 @@
+// src/components/WarehouseManager/SuppliersList.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import {Link} from "react-router-dom";
+import { Link } from 'react-router-dom';
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const SupplierList = () => {
     const [suppliers, setSuppliers] = useState([]);
@@ -64,66 +65,67 @@ const SupplierList = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8"
-            ><div className="flex justify-start mb-0">
-                <Link
-                    to="/warehouse-dashboard"
-                    className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-                >
-                    ← Back to Warehouse Dashboard
-                </Link>
-            </div>
-                <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
+            >
+                <div className="flex justify-start mb-0">
+                    <Link
+                        to="/warehouse-dashboard"
+                        className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm md:text-base"
+                    >
+                        ← Back to Warehouse Dashboard
+                    </Link>
+                </div>
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-8 text-center">
                     Supplier Directory
                 </h2>
 
                 {/* Add Supplier Form */}
                 <form onSubmit={handleAddSupplier} className="space-y-4 mb-10">
-                    <h3 className="text-xl font-semibold text-gray-700">Add New Supplier</h3>
+                    <h3 className="text-lg md:text-xl font-semibold text-gray-700">Add New Supplier</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" name="name" value={newSupplier.name} onChange={handleInputChange} placeholder="Name" required className="border p-2 rounded" />
-                        <input type="text" name="phone" value={newSupplier.phone} onChange={handleInputChange} placeholder="Phone" required className="border p-2 rounded" />
-                        <input type="email" name="email" value={newSupplier.email} onChange={handleInputChange} placeholder="Email" required className="border p-2 rounded" />
-                        <input type="text" name="address" value={newSupplier.address} onChange={handleInputChange} placeholder="Address" required className="border p-2 rounded" />
-                        <input type="text" name="city" value={newSupplier.city} onChange={handleInputChange} placeholder="City" required className="border p-2 rounded" />
+                        <input type="text" name="name" value={newSupplier.name} onChange={handleInputChange} placeholder="Name" required className="border p-2 rounded text-sm md:text-base" />
+                        <input type="text" name="phone" value={newSupplier.phone} onChange={handleInputChange} placeholder="Phone" required className="border p-2 rounded text-sm md:text-base" />
+                        <input type="email" name="email" value={newSupplier.email} onChange={handleInputChange} placeholder="Email" required className="border p-2 rounded text-sm md:text-base" />
+                        <input type="text" name="address" value={newSupplier.address} onChange={handleInputChange} placeholder="Address" required className="border p-2 rounded text-sm md:text-base" />
+                        <input type="text" name="city" value={newSupplier.city} onChange={handleInputChange} placeholder="City" required className="border p-2 rounded text-sm md:text-base" />
                     </div>
-                    <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">Add Supplier</button>
+                    <button type="submit" className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition text-sm md:text-base">Add Supplier</button>
                 </form>
 
                 {/* Supplier Table */}
                 <table className="min-w-full border border-gray-300 rounded-lg overflow-hidden">
                     <thead className="bg-gray-200">
                     <tr>
-                        <th className="py-3 px-4 text-left">ID</th>
-                        <th className="py-3 px-4 text-left">Name</th>
-                        <th className="py-3 px-4 text-left">Contact</th>
-                        <th className="py-3 px-4 text-left">Email</th>
-                        <th className="py-3 px-4 text-left">Address</th>
-                        <th className="py-3 px-4 text-left">City</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">ID</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">Name</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">Contact</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">Email</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">Address</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">City</th>
+                        <th className="py-3 px-4 text-left text-sm md:text-base">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {suppliers.map((supplier) => (
                         <tr key={supplier.supplier_id} className="border-t hover:bg-gray-50">
-                            <td className="py-3 px-4">{supplier.supplier_id}</td>
-                            <td className="py-3 px-4">{supplier.name}</td>
-                            <td className="py-3 px-4">{supplier.phone}</td>
-                            <td className="py-3 px-4">{supplier.email}</td>
-                            <td className="py-3 px-4">{supplier.address}</td>
-                            <td className="py-3 px-4">{supplier.city}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.supplier_id}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.name}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.phone}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.email}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.address}</td>
+                            <td className="py-3 px-4 text-sm md:text-base">{supplier.city || supplier.location || '—'}</td>
                             <td className="py-3 px-4">
                                 <button
                                     onClick={() => handleDeleteSupplier(supplier.supplier_id)}
-                                    className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 transition"
+                                    className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 transition text-sm md:text-base"
                                 >
                                     Delete
                                 </button>
                             </td>
-
                         </tr>
                     ))}
                     {suppliers.length === 0 && (
                         <tr>
-                            <td colSpan="7" className="text-center py-4 text-gray-500">
+                            <td colSpan="7" className="text-center py-4 text-gray-500 text-sm md:text-base">
                                 No suppliers found.
                             </td>
                         </tr>

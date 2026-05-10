@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const BASE_SALARIES = {
-    'HR Manager': 5500,
+    'HR Manager': 5500, 'Admin': 6000,
     'Warehouse Manager': 5500,
     'Finance Manager': 5500,
     'Production Supervisor': 5500,
@@ -53,22 +53,20 @@ const ManageSalaries = () => {
             const [employeesRes, salariesRes, accountantsRes] = await Promise.all([
                 axios.get(`${BASE_URL}/api/employees`),
                 axios.get(`${BASE_URL}/api/salaries/date/${selectedMonth}-01`),
-                axios.get(`${BASE_URL}/api/accountants`)
+                axios.get(`${BASE_URL}/api/accountant`)
             ]);
 
             setEmployees(employeesRes.data || []);
             setSalaries(salariesRes.data || []);
             setAccountants(accountantsRes.data || []);
-            if (accountantsRes.data?.length > 0) {
-                setSelectedAccountant(accountantsRes.data[0].accountantId);
+
+            if (accountantsRes.data?.length > 0 && !selectedAccountant) {
+                setSelectedAccountant(accountantsRes.data[0].accountant_id);
             }
             setError(null);
         } catch (err) {
             setError('Failed to fetch data. Please try again later.');
             console.error(err);
-            setEmployees([]);
-            setSalaries([]);
-            setAccountants([]);
         } finally {
             setLoading(false);
         }
@@ -83,19 +81,24 @@ const ManageSalaries = () => {
         try {
             setIsCreating(true);
             const employeesWithoutSalary = employees.filter(emp =>
-                !salaries.some(s => s.employee.employee_id === emp.employee_id)
+                !salaries.some(s => s.employee?.employee_id === emp.employee_id)
             );
+
+            if (employeesWithoutSalary.length === 0) {
+                setIsCreating(false);
+                return;
+            }
 
             const createPromises = employeesWithoutSalary.map(employee =>
                 axios.post(`${BASE_URL}/api/salaries`, null, {
                     params: {
                         employeeId: employee.employee_id,
                         date: `${selectedMonth}-01`,
-                        baseAmount: BASE_SALARIES[employee.designation]?.toString() || '0',
-                        bonus: '0',
-                        fine: '0',
+                        baseAmount: BASE_SALARIES[employee.designation] || 0,
+                        bonus: 0,
+                        fine: 0,
                         accountantId: selectedAccountant,
-                        paymentMethod: 'BANK_TRANSFER'
+                        paymentMethod: 'bank transfer'
                     }
                 })
             );
@@ -103,7 +106,7 @@ const ManageSalaries = () => {
             await Promise.all(createPromises);
             await fetchData();
         } catch (err) {
-            setError('Failed to create salary records. Please try again.');
+            setError('Failed to create salary records.');
             console.error(err);
         } finally {
             setIsCreating(false);
@@ -125,183 +128,111 @@ const ManageSalaries = () => {
         }));
     };
 
+    // MOVED OUTSIDE THE RENDER LOOP
     const handleSave = async (salaryId) => {
         try {
-            const response = await axios.put(`${BASE_URL}/api/salaries/${salaryId}`, null, {
+            await axios.put(`${BASE_URL}/api/salaries/${salaryId}`, null, {
                 params: {
-                    bonus: editValues.bonus.toString(),
-                    fine: editValues.fine.toString()
+                    bonus: editValues.bonus,
+                    fine: editValues.fine
                 }
             });
-            setSalaries(salaries.map(s => s.salaryId === salaryId ? response.data : s));
             setEditingSalary(null);
             setEditValues({ bonus: 0, fine: 0 });
             await fetchData();
         } catch (err) {
-            setError('Failed to update salary. Please try again.');
+            setError('Failed to update salary.');
             console.error(err);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="text-red-500 text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                {error}
-            </div>
-        );
-    }
+    if (loading) return <div className="flex justify-center p-10 font-bold">Loading...</div>;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="container mx-auto px-4 py-8"
-        >
-            <div className="flex justify-start mb-0">
-                <Link
-                    to="/finance-dashboard"
-                    className="bg-gray-500 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-                >
-                    ← Back to Finance Dashboard
-                </Link>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="container mx-auto px-4 py-8">
+            <div className="flex justify-start mb-4">
+                <Link to="/finance-dashboard" className="bg-gray-500 text-white px-4 py-2 rounded-lg">← Back</Link>
             </div>
 
-            <div className="mb-8 bg-white rounded-lg shadow-md p-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <h2 className="text-2xl font-bold text-gray-800">Manage Salaries</h2>
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto">
-                        <select
-                            value={selectedAccountant}
-                            onChange={(e) => setSelectedAccountant(e.target.value)}
-                            className="w-full md:w-64 border border-gray-300 rounded-lg px-4 py-2"
-                        >
-                            <option value="">Select Accountant</option>
-                            {accountants.map(accountant => (
-                                <option key={accountant.accountantId} value={accountant.accountantId}>
-                                    {accountant.employee.first_name} {accountant.employee.last_name}
-                                </option>
-                            ))}
-                        </select>
+            {error && <div className="text-red-500 bg-red-50 p-4 rounded mb-4">{error}</div>}
 
-                        {!salaries.length && (
-                            <button
-                                onClick={handleCreateAllSalaries}
-                                disabled={isCreating || !selectedAccountant}
-                                className={`w-full md:w-auto px-6 py-2 rounded-lg text-white font-medium transition-colors duration-200 border-2 ${
-                                    isCreating || !selectedAccountant
-                                        ? 'bg-gray-400 border-gray-500 cursor-not-allowed'
-                                        : 'bg-blue-600 border-blue-700 hover:bg-blue-700'
-                                }`}
-                            >
-                                {isCreating ? 'Creating...' : 'Create All Salary Records'}
-                            </button>
-                        )}
-                    </div>
+            <div className="bg-white p-6 rounded-lg shadow mb-8 flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Manage Salaries</h2>
+                    <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border p-2 rounded" />
                 </div>
-
-                <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Month:</label>
-                    <input
-                        type="month"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="border border-gray-300 rounded-lg px-4 py-2"
-                    />
+                <div className="flex gap-4">
+                    <select value={selectedAccountant} onChange={(e) => setSelectedAccountant(e.target.value)} className="border p-2 rounded">
+                        <option value="">Select Accountant</option>
+                        {accountants.map(acc => (
+                            <option key={acc.accountant_id} value={acc.accountant_id}>
+                                {acc.employee?.first_name} {acc.employee?.last_name}
+                            </option>
+                        ))}
+                    </select>
+                    <button onClick={handleCreateAllSalaries} disabled={isCreating} className="bg-blue-600 text-white px-4 py-2 rounded">
+                        {isCreating ? 'Processing...' : 'Create All Records'}
+                    </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Employee</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Base Salary</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Bonus</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Fine</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
-                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                        {employees.map(employee => {
-                            const salary = salaries.find(s => s.employee.employee_id === employee.employee_id);
-                            const baseSalary = BASE_SALARIES[employee.designation];
-                            return (
-                                <tr key={employee.employee_id} className="hover:bg-gray-50 transition-colors duration-150">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900">
-                                            {employee.first_name} {employee.last_name}
-                                        </div>
-                                        <div className="text-sm text-gray-500">{employee.designation}</div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">${baseSalary?.toFixed(2) || '0.00'}</td>
-                                    {salary ? (
-                                        <>
-                                            <td className="px-6 py-4">
-                                                {editingSalary?.salaryId === salary.salaryId ? (
-                                                    <input
-                                                        type="number"
-                                                        value={editValues.bonus}
-                                                        onChange={(e) => handleEditChange('bonus', e.target.value)}
-                                                        className="w-24 border border-gray-300 rounded-lg px-3 py-1"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm text-gray-900">${salary.bonus?.toFixed(2) || '0.00'}</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {editingSalary?.salaryId === salary.salaryId ? (
-                                                    <input
-                                                        type="number"
-                                                        value={editValues.fine}
-                                                        onChange={(e) => handleEditChange('fine', e.target.value)}
-                                                        className="w-24 border border-gray-300 rounded-lg px-3 py-1"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm text-gray-900">${salary.fine?.toFixed(2) || '0.00'}</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                ${(baseSalary + (salary.bonus || 0) - (salary.fine || 0)).toFixed(2)}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {editingSalary?.salaryId === salary.salaryId ? (
-                                                    <button
-                                                        onClick={() => handleSave(salary.salaryId)}
-                                                        className="text-green-600 hover:underline font-medium"
-                                                    >
-                                                        Save
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleEdit(salary)}
-                                                        className="text-blue-600 hover:underline font-medium"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </>
-                                    ) : (
-                                        <td colSpan="4" className="px-6 py-4 text-sm text-gray-500 italic">
-                                            Not yet created
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+                <table className="min-w-full">
+                    <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-6 py-3 text-left">Employee</th>
+                        <th className="px-6 py-3 text-left">Base</th>
+                        <th className="px-6 py-3 text-left">Bonus</th>
+                        <th className="px-6 py-3 text-left">Fine</th>
+                        <th className="px-6 py-3 text-left">Total</th>
+                        <th className="px-6 py-3 text-left">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {employees.map(employee => {
+                        // DEFENSIVE MATCHING: Check both snake_case and camelCase
+                        const salary = salaries.find(s => s.employee?.employee_id === employee.employee_id);
+                        const baseSalary = BASE_SALARIES[employee.designation] || 0;
+                        const sId = salary?.salary_id || salary?.salaryId; // Handle both cases
+
+                        return (
+                            <tr key={employee.employee_id} className="border-t">
+                                <td className="px-6 py-4">
+                                    <div className="font-bold">{employee.first_name} {employee.last_name}</div>
+                                    <div className="text-sm text-gray-500">{employee.designation}</div>
+                                </td>
+                                <td className="px-6 py-4">${baseSalary.toFixed(2)}</td>
+                                {salary ? (
+                                    <>
+                                        <td className="px-6 py-4">
+                                            {editingSalary?.salary_id === sId || editingSalary?.salaryId === sId ? (
+                                                <input type="number" value={editValues.bonus} onChange={(e) => handleEditChange('bonus', e.target.value)} className="border w-20 p-1" />
+                                            ) : `$${salary.bonus}`}
                                         </td>
-                                    )}
-                                </tr>
-                            );
-                        })}
-                        </tbody>
-                    </table>
-                </div>
+                                        <td className="px-6 py-4">
+                                            {editingSalary?.salary_id === sId || editingSalary?.salaryId === sId ? (
+                                                <input type="number" value={editValues.fine} onChange={(e) => handleEditChange('fine', e.target.value)} className="border w-20 p-1" />
+                                            ) : `$${salary.fine}`}
+                                        </td>
+                                        <td className="px-6 py-4 font-bold">
+                                            ${(baseSalary + (salary.bonus || 0) - (salary.fine || 0)).toFixed(2)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {editingSalary?.salary_id === sId || editingSalary?.salaryId === sId ? (
+                                                <button onClick={() => handleSave(sId)} className="text-green-600 font-bold">Save</button>
+                                            ) : (
+                                                <button onClick={() => handleEdit(salary)} className="text-blue-600 underline">Edit</button>
+                                            )}
+                                        </td>
+                                    </>
+                                ) : (
+                                    <td colSpan="4" className="px-6 py-4 text-gray-400 italic">Not yet created</td>
+                                )}
+                            </tr>
+                        );
+                    })}
+                    </tbody>
+                </table>
             </div>
         </motion.div>
     );

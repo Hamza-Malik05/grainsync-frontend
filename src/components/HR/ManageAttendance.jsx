@@ -1,3 +1,4 @@
+// javascript
 import React, { useState, useEffect } from "react";
 import {Link, useNavigate} from "react-router-dom";
 import axios from "axios";
@@ -14,46 +15,102 @@ export default function ManageAttendance() {
   });
   const [departments, setDepartments] = useState([]);
 
+  // Fetch departments once on mount so we can fill department names when normalizing records.
+  useEffect(() => {
+    axios
+        .get(`${BASE_URL}/api/departments`)
+        .then((response) => {
+          setDepartments(Array.isArray(response.data) ? response.data : []);
+        })
+        .catch((error) => {
+          console.error("Error fetching departments:", error);
+          setDepartments([]);
+        });
+  }, []);
+
+  // When date changes, load attendance records for that date.
   useEffect(() => {
     if (date) {
       fetchAttendanceRecords();
+    } else {
+      setAttendanceRecords([]);
     }
-    // Fetch departments for filtering
-    axios
-      .get(`${BASE_URL}/api/departments`)
-      .then((response) => {
-        setDepartments(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching departments:", error);
-      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
+  // Helper: stable numeric sort by employee id (falls back to other ids).
+  // Creates a copy of the array so original is not mutated.
+  const sortByEmployeeId = (records) =>
+      (Array.isArray(records) ? records.slice() : []).sort((a, b) => {
+        const aId = Number(a.employee?.employee_id ?? a.employee?.id ?? a.attendance_id ?? 0) || 0;
+        const bId = Number(b.employee?.employee_id ?? b.employee?.id ?? b.attendance_id ?? 0) || 0;
+        return aId - bId;
+      });
+
+  // Fetch attendance records for the selected date, initialize if none exist,
+  // normalize department names using the departments list, and set state using
+  // the sorted array so the UI has a canonical order.
+  // Note: local updates (e.g., toggling absent) should update items in-place
+  // and NOT call this sorter again so the order remains stable.
   const fetchAttendanceRecords = async () => {
+    if (!date) {
+      alert("Please select a date first.");
+      return;
+    }
+
     setLoading(true);
     try {
-      // First, try to get existing records for the date
-      const existingRecords = await axios.get(
-        `${BASE_URL}/api/attendance`,
-        { params: { date } }
-      );
-      
-      // If no records exist, initialize them
-      if (existingRecords.data.length === 0) {
-        const response = await axios.post(
-          `${BASE_URL}/api/attendance/initialize`,
-          {},
-          { params: { date } }
+      // Get existing records for the date
+      const existingRes = await axios.get(`${BASE_URL}/api/attendance`, { params: { date } });
+      const existing = Array.isArray(existingRes.data) ? existingRes.data : [];
+
+      let records = existing;
+
+      // If backend returned no records, attempt initialization endpoint
+      if (existing.length === 0) {
+        const initRes = await axios.post(
+            `${BASE_URL}/api/attendance/initialize`,
+            {},
+            { params: { date } }
         );
-        setAttendanceRecords(response.data);
-      } else {
-        setAttendanceRecords(existingRecords.data);
+        records = Array.isArray(initRes.data) ? initRes.data : [];
       }
+
+      // Normalize employee.department so UI can reliably read `department.name`.
+      const normalized = records.map((rec) => {
+        const emp = rec.employee || {};
+        let dept = emp.department;
+
+        if (dept && typeof dept === "object") {
+          // ensure dept_id numeric and try to fill missing name from departments list
+          const deptId = Number(dept.dept_id ?? dept.id ?? dept.deptId ?? dept);
+          dept = { ...dept, dept_id: Number.isNaN(deptId) ? dept.dept_id : deptId };
+          if (!dept.name && Array.isArray(departments) && dept.dept_id != null) {
+            const found = departments.find((d) => Number(d.dept_id) === Number(dept.dept_id));
+            if (found) dept.name = found.name;
+          }
+        } else {
+          // department might be an id or missing; attempt to resolve from emp.dept_id or departments list
+          const candidateId = emp.dept_id ?? emp.department ?? null;
+          const did = candidateId != null ? Number(candidateId) : null;
+          const found = Array.isArray(departments) ? departments.find((d) => Number(d.dept_id) === did) : null;
+          dept = found ? { ...found, dept_id: did } : (did ? { dept_id: did } : null);
+        }
+
+        return {
+          ...rec,
+          employee: { ...emp, department: dept },
+        };
+      });
+
+      // Sort once by employee id and set state
+      setAttendanceRecords(sortByEmployeeId(normalized));
     } catch (error) {
       console.error("Error fetching attendance records:", error);
       alert("Failed to fetch attendance records.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleFilterChange = (e) => {
@@ -98,15 +155,9 @@ export default function ManageAttendance() {
     } catch (error) {
       console.error("Error marking absent:", error);
       if (error.response) {
-        // If the error response has a message property, use it
-        const errorMessage = error.response.data.message || error.response.data;
-        console.error("Error response:", error.response.data);
-        alert(`Failed to mark employee as absent: ${errorMessage}`);
-      } else if (error.message) {
-        alert(`Failed to mark employee as absent: ${error.message}`);
-      } else {
-        alert("Failed to mark employee as absent. Please try again.");
+        console.error("Response data:", error.response.data);
       }
+      alert("Failed to mark absent. Please try again.");
     }
     setLoading(false);
   };
@@ -124,10 +175,10 @@ export default function ManageAttendance() {
   const filteredRecords = attendanceRecords.filter((record) => {
     const departmentIdFilter = filters.departmentId ? Number(filters.departmentId) : null;
     return (
-      (filters.employeeId === "" ||
-        record.employee.employee_id.toString().includes(filters.employeeId)) &&
-      (departmentIdFilter === null ||
-        record.employee.department?.dept_id === departmentIdFilter)
+        (filters.employeeId === "" ||
+            record.employee.employee_id.toString().includes(filters.employeeId)) &&
+        (departmentIdFilter === null ||
+            Number(record.employee.department?.dept_id) === departmentIdFilter)
     );
   });
 
